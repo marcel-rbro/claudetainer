@@ -1,0 +1,80 @@
+#!/bin/bash
+set -e
+
+# Check if Docker is running
+if ! docker info &> /dev/null; then
+    echo "Error: Docker is not running"
+    echo "Please start Docker and try again"
+    exit 1
+fi
+
+# Check if ANTHROPIC_API_KEY is set
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo "Error: ANTHROPIC_API_KEY environment variable is not set"
+    echo ""
+    echo "Please set your API key:"
+    echo "  export ANTHROPIC_API_KEY=sk-ant-..."
+    echo ""
+    echo "Or create a .env file in your home directory with:"
+    echo "  ANTHROPIC_API_KEY=sk-ant-..."
+    exit 1
+fi
+
+# Check if claudetainer image exists
+if ! docker image inspect claudetainer:latest &> /dev/null; then
+    echo "Error: claudetainer:latest Docker image not found"
+    echo ""
+    echo "Please build the image first:"
+    echo "  cd /path/to/claudetainer"
+    echo "  ./build.sh"
+    exit 1
+fi
+
+# Get git config if available
+GIT_USER_NAME="${GIT_USER_NAME:-$(git config user.name 2>/dev/null || echo '')}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-$(git config user.email 2>/dev/null || echo '')}"
+
+# Create unique container name based on directory and PID
+CONTAINER_NAME="claudetainer-$(basename "$(pwd)")-$$"
+
+# Create .claude directory if it doesn't exist
+mkdir -p "$HOME/.claude"
+
+# Prepare volume mounts
+VOLUMES=(
+    -v "$(pwd):/workspace"
+    -v "$HOME/.claude:/root/.claude"
+)
+
+# Add gitconfig if it exists
+if [ -f "$HOME/.gitconfig" ]; then
+    VOLUMES+=(-v "$HOME/.gitconfig:/root/.gitconfig:ro")
+fi
+
+# Add SSH directory if it exists
+if [ -d "$HOME/.ssh" ]; then
+    VOLUMES+=(-v "$HOME/.ssh:/root/.ssh:ro")
+fi
+
+# Prepare environment variables
+ENV_VARS=(
+    -e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+)
+
+if [ -n "$GIT_USER_NAME" ]; then
+    ENV_VARS+=(-e "GIT_USER_NAME=$GIT_USER_NAME")
+fi
+
+if [ -n "$GIT_USER_EMAIL" ]; then
+    ENV_VARS+=(-e "GIT_USER_EMAIL=$GIT_USER_EMAIL")
+fi
+
+# Run Docker container with user ID mapping
+docker run -it --rm \
+    --name "$CONTAINER_NAME" \
+    --user "$(id -u):$(id -g)" \
+    "${VOLUMES[@]}" \
+    "${ENV_VARS[@]}" \
+    -w /workspace \
+    claudetainer:latest \
+    "$@"

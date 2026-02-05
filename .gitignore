@@ -1,0 +1,22 @@
+# Environment files
+.env
+
+# Temporary build files
+tmp/
+
+# Claude config (should use user's own)
+.claude/
+
+# Docker build cache
+.docker/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

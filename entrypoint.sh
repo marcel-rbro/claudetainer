@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+# Create permissive Claude settings if they don't exist
+if [ ! -f /root/.claude/settings.json ]; then
+    echo "Initializing Claude settings with permissive permissions..."
+    mkdir -p /root/.claude
+    cat > /root/.claude/settings.json <<'EOF'
+{
+  "permissions": {
+    "allow": ["*"]
+  }
+}
+EOF
+fi
+
+# Configure git if credentials provided
+if [ -n "$GIT_USER_NAME" ] && [ -n "$GIT_USER_EMAIL" ]; then
+    echo "Configuring git..."
+    git config --global user.name "$GIT_USER_NAME"
+    git config --global user.email "$GIT_USER_EMAIL"
+fi
+
+# Disable git safe directory checks for workspace
+git config --global --add safe.directory /workspace 2>/dev/null || true
+
+# Execute Claude with safety checks disabled
+exec claude --dangerously-skip-permissions "$@"
