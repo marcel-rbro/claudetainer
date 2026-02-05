@@ -72,11 +72,25 @@ if [ -n "$GIT_USER_EMAIL" ]; then
 fi
 
 # Run Docker container with user ID mapping
-docker run -it --rm \
-    --name "$CONTAINER_NAME" \
-    --user "$(id -u):$(id -g)" \
-    "${VOLUMES[@]}" \
-    "${ENV_VARS[@]}" \
-    -w /workspace \
-    claudetainer:latest \
-    "$@"
+# Check if stdin is a TTY
+if [ -t 0 ]; then
+    # Interactive mode
+    docker run -it --rm \
+        --name "$CONTAINER_NAME" \
+        --user "$(id -u):$(id -g)" \
+        "${VOLUMES[@]}" \
+        "${ENV_VARS[@]}" \
+        -w /workspace \
+        claudetainer:latest \
+        "$@"
+else
+    # Non-interactive mode (piped input)
+    docker run --rm \
+        --name "$CONTAINER_NAME" \
+        --user "$(id -u):$(id -g)" \
+        "${VOLUMES[@]}" \
+        "${ENV_VARS[@]}" \
+        -w /workspace \
+        claudetainer:latest \
+        "$@"
+fi
