@@ -15,21 +15,9 @@ Run Claude Code in a Docker container from any directory with all safety checks 
 ## Prerequisites
 
 - Docker installed and running
-- **Linux system** with Claude Code installed (see Platform Limitations below)
 - Anthropic API key
 
-### Platform Limitations
-
-⚠️ **Important:** Claudetainer currently only works on **Linux** systems where Claude Code is available as a native Linux binary.
-
-**Why macOS doesn't work:**
-- Claude Code on macOS is compiled as a Mach-O (macOS) executable
-- Docker runs Linux containers, which cannot execute macOS binaries
-- Even with matching architectures (arm64), the binary formats are incompatible
-
-**Potential solutions:**
-- Use Linux (native or VM) where Claude is a Linux binary
-- Contribute a solution that runs Claude via Node.js/Bun runtime instead of copying the binary
+**No Claude Code installation required!** Claudetainer uses the official npm package and works on any platform.
 
 ## Installation
 
@@ -59,9 +47,9 @@ echo 'export ANTHROPIC_API_KEY=sk-ant-your-key-here' >> ~/.zshrc
 ```
 
 This will:
-- Detect your Claude binary location
-- Build the Docker image
+- Build Docker image with Node.js and Claude Code (via npm)
 - Install the `claudetainer` command to `/usr/local/bin`
+- Takes 2-3 minutes on first build
 
 ## Usage
 
@@ -104,11 +92,13 @@ The container will use your system's git configuration and SSH keys.
 
 ### Architecture
 
-1. **build.sh**: Detects your Claude binary and builds the Docker image
-2. **Dockerfile**: Creates Ubuntu container with git and Claude
+1. **build.sh**: Builds Docker image with Node.js and npm
+2. **Dockerfile**: Node.js 20 base + @anthropic-ai/claude-code from npm
 3. **entrypoint.sh**: Initializes container with disabled safety checks
 4. **claudetainer**: Wrapper script that mounts your current directory
 5. **install.sh**: Installs everything system-wide
+
+Claude Code is installed via the official npm package (@anthropic-ai/claude-code), eliminating binary compatibility issues across platforms.
 
 ### Volume Mounts
 
@@ -139,13 +129,12 @@ GIT_USER_NAME="Your Name"
 GIT_USER_EMAIL="your@email.com"
 ```
 
-### Custom Claude Binary Path
+### Updating Claude Code
 
-If Claude is not in your PATH:
+To get the latest version of Claude:
 
 ```bash
-export CLAUDE_BIN_PATH=/path/to/claude
-./build.sh
+./build.sh  # Rebuilds with latest npm package
 ```
 
 ## Troubleshooting
@@ -170,13 +159,13 @@ Set your API key:
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-### "Could not find Claude binary"
+### Build fails
 
-Specify the path explicitly:
+Ensure Docker has enough resources:
 
 ```bash
-export CLAUDE_BIN_PATH=/path/to/claude
-./build.sh
+# Docker Desktop -> Settings -> Resources
+# Increase memory to at least 4GB
 ```
 
 ### Permission Issues with ~/.claude
@@ -210,21 +199,20 @@ git config --global user.email "your@email.com"
 
 ## Limitations
 
-- **Platform**: Currently only works on Linux (macOS binaries incompatible with Linux containers)
-- **Authentication**: macOS keychain not available (use API key)
+- **Authentication**: Keychain not available in containers (use API key)
 - **File Access**: Container cannot access files outside current directory tree
 - **Interface**: No GUI support (Claude Code is CLI-only)
-- **Updates**: Requires rebuilding image if Claude binary is updated
+- **Updates**: Rebuild image to get latest Claude version from npm
 
 ## Transferring to Another System
 
 To use Claudetainer on a different machine:
 
 1. Copy the repository to the new system
-2. Ensure Docker and Claude Code are installed
+2. Ensure Docker is installed
 3. Run `./install.sh`
 
-The build script will automatically detect the Claude binary location on the new system.
+Claude Code will be installed automatically via npm during the build.
 
 ## Uninstallation
 
