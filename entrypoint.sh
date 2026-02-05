@@ -33,7 +33,6 @@ fi
 # Disable git safe directory checks for workspace
 git config --global --add safe.directory /workspace 2>/dev/null || true
 
-# Execute Claude
-# Note: --dangerously-skip-permissions causes issues with user ID mapping
-# The permissive settings.json provides the needed permissions
-exec claude "$@"
+# Execute Claude with bypass permissions mode
+# Using --permission-mode=bypassPermissions instead of --dangerously-skip-permissions
+exec claude --permission-mode=bypassPermissions "$@"
