@@ -2,8 +2,9 @@
 set -e
 
 # Create HOME directory if it doesn't exist (with proper permissions)
-mkdir -p "$HOME"
-chmod 755 "$HOME" 2>/dev/null || true
+# Must be writable by the mapped user
+mkdir -p "$HOME" 2>/dev/null || true
+chmod 777 "$HOME" 2>/dev/null || true
 
 # Create permissive Claude settings if they don't exist
 CLAUDE_DIR="${HOME}/.claude"
