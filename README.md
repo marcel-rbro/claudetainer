@@ -15,8 +15,21 @@ Run Claude Code in a Docker container from any directory with all safety checks 
 ## Prerequisites
 
 - Docker installed and running
-- Claude Code binary on your system
+- **Linux system** with Claude Code installed (see Platform Limitations below)
 - Anthropic API key
+
+### Platform Limitations
+
+⚠️ **Important:** Claudetainer currently only works on **Linux** systems where Claude Code is available as a native Linux binary.
+
+**Why macOS doesn't work:**
+- Claude Code on macOS is compiled as a Mach-O (macOS) executable
+- Docker runs Linux containers, which cannot execute macOS binaries
+- Even with matching architectures (arm64), the binary formats are incompatible
+
+**Potential solutions:**
+- Use Linux (native or VM) where Claude is a Linux binary
+- Contribute a solution that runs Claude via Node.js/Bun runtime instead of copying the binary
 
 ## Installation
 
@@ -197,10 +210,11 @@ git config --global user.email "your@email.com"
 
 ## Limitations
 
-- macOS keychain authentication not available (use API key)
-- Container cannot access files outside current directory tree
-- No GUI support (Claude Code is CLI-only)
-- Requires rebuilding image if Claude binary is updated
+- **Platform**: Currently only works on Linux (macOS binaries incompatible with Linux containers)
+- **Authentication**: macOS keychain not available (use API key)
+- **File Access**: Container cannot access files outside current directory tree
+- **Interface**: No GUI support (Claude Code is CLI-only)
+- **Updates**: Requires rebuilding image if Claude binary is updated
 
 ## Transferring to Another System
 
