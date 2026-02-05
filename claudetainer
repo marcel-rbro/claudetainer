@@ -59,6 +59,7 @@ fi
 # Prepare environment variables
 ENV_VARS=(
     -e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+    -e "HOME=/tmp/claudetainer-home"
 )
 
 if [ -n "$GIT_USER_NAME" ]; then

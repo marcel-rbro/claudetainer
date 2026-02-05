@@ -1,11 +1,15 @@
 #!/bin/bash
 set -e
 
+# Create HOME directory if it doesn't exist
+mkdir -p "$HOME"
+
 # Create permissive Claude settings if they don't exist
-if [ ! -f /root/.claude/settings.json ]; then
+CLAUDE_DIR="${HOME}/.claude"
+if [ ! -f "${CLAUDE_DIR}/settings.json" ]; then
     echo "Initializing Claude settings with permissive permissions..."
-    mkdir -p /root/.claude
-    cat > /root/.claude/settings.json <<'EOF'
+    mkdir -p "${CLAUDE_DIR}"
+    cat > "${CLAUDE_DIR}/settings.json" <<'EOF'
 {
   "permissions": {
     "allow": ["*"]
