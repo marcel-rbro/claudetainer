@@ -216,15 +216,33 @@ Claude Code will be installed automatically via npm during the build.
 
 ## Uninstallation
 
+### Quick Uninstall
+
+Run the uninstall script:
+
+```bash
+./uninstall.sh
+```
+
+### Manual Uninstall
+
 ```bash
 # Remove the command
-sudo rm /usr/local/bin/claudetainer
+rm ~/.local/bin/claudetainer
 
 # Remove Docker image
 docker rmi claudetainer:latest
 
-# Remove repository
+# Remove from PATH (edit ~/.zshrc and remove the line):
+# export PATH="$HOME/.local/bin:$PATH"
+sed -i.bak '/\.local\/bin.*PATH/d' ~/.zshrc
+source ~/.zshrc
+
+# (Optional) Remove project directory
 rm -rf /path/to/claudetainer
+
+# (Optional) Remove Claude config - WARNING: removes all Claude settings
+rm -rf ~/.claude
 ```
 
 ## Building Without Installing
