@@ -12,7 +12,10 @@ if [ ! -f "${CLAUDE_DIR}/settings.json" ]; then
 {
   "permissions": {
     "allow": ["*"]
-  }
+  },
+  "apiKey": "${ANTHROPIC_API_KEY}",
+  "theme": "dark",
+  "hasCompletedSetup": true
 }
 EOF
 fi
