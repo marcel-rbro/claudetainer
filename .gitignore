@@ -1,6 +1,13 @@
 # Environment files
 .env
 
+# Generated files
+.gitconfig-claudetainer
+
+# Test files
+test-infrastructure.sh
+test-new-terminal.sh
+
 # Temporary build files
 tmp/
 
