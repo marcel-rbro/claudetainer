@@ -7,7 +7,6 @@ mkdir -p "$HOME"
 # Create permissive Claude settings if they don't exist
 CLAUDE_DIR="${HOME}/.claude"
 if [ ! -f "${CLAUDE_DIR}/settings.json" ]; then
-    echo "Initializing Claude settings with permissive permissions..."
     mkdir -p "${CLAUDE_DIR}"
     cat > "${CLAUDE_DIR}/settings.json" <<'EOF'
 {
@@ -20,7 +19,6 @@ fi
 
 # Configure git if credentials provided
 if [ -n "$GIT_USER_NAME" ] && [ -n "$GIT_USER_EMAIL" ]; then
-    echo "Configuring git..."
     git config --global user.name "$GIT_USER_NAME"
     git config --global user.email "$GIT_USER_EMAIL"
 fi
