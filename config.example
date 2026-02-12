@@ -1,0 +1,31 @@
+# Claudetainer Configuration Example
+# Copy this file to ~/.claudetainer/config and customize it
+
+# Default prompt to use when running claudetainer without arguments
+# This will be used unless overridden by:
+#   1. Command line argument: claudetainer "your prompt"
+#   2. Environment variable: CLAUDETAINER_DEFAULT_PROMPT
+
+# Example prompts:
+
+# Code review assistant
+# DEFAULT_PROMPT='You are an experienced code reviewer. Please review the code in this repository for best practices, potential bugs, and improvements.'
+
+# General coding assistant
+# DEFAULT_PROMPT='You are a helpful coding assistant. Please help me with any coding tasks.'
+
+# Debugging specialist
+# DEFAULT_PROMPT='You are a debugging expert. Help me identify and fix issues in this codebase.'
+
+# Documentation writer
+# DEFAULT_PROMPT='You are a technical documentation writer. Help me create clear and comprehensive documentation.'
+
+# Set your default prompt here:
+DEFAULT_PROMPT=''
+
+# Skip Claude configuration dialog
+# Set to '1' or 'true' to skip the configuration dialog on startup
+# Can be overridden by:
+#   1. --skip-config flag (one-time)
+#   2. Environment variable: CLAUDETAINER_SKIP_CONFIG
+SKIP_CONFIG_DIALOG='0'

@@ -1,0 +1,493 @@
+#!/usr/bin/env bash
+
+# claudetainer - A wrapper for running Claude in a Docker sandbox
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Config directory and file
+CONFIG_DIR="$HOME/.claudetainer"
+CONFIG_FILE="$CONFIG_DIR/config"
+
+# Function to detect shell config file
+detect_shell_config() {
+    if [ -n "$ZSH_VERSION" ]; then
+        echo "$HOME/.zshrc"
+    elif [ -n "$BASH_VERSION" ]; then
+        if [ -f "$HOME/.bash_profile" ]; then
+            echo "$HOME/.bash_profile"
+        else
+            echo "$HOME/.bashrc"
+        fi
+    else
+        # Default to bashrc if we can't detect
+        echo "$HOME/.bashrc"
+    fi
+}
+
+# Function to load default prompt from config
+load_default_prompt() {
+    local prompt=""
+
+    # Check config file first
+    if [ -f "$CONFIG_FILE" ]; then
+        # Source the config file in a subshell to avoid polluting our environment
+        prompt=$(source "$CONFIG_FILE" 2>/dev/null && echo "$DEFAULT_PROMPT")
+    fi
+
+    # Environment variable overrides config file
+    if [ -n "$CLAUDETAINER_DEFAULT_PROMPT" ]; then
+        prompt="$CLAUDETAINER_DEFAULT_PROMPT"
+    fi
+
+    echo "$prompt"
+}
+
+# Function to load skip config setting from config
+load_skip_config() {
+    local skip_config=""
+
+    # Check config file first
+    if [ -f "$CONFIG_FILE" ]; then
+        skip_config=$(source "$CONFIG_FILE" 2>/dev/null && echo "$SKIP_CONFIG_DIALOG")
+    fi
+
+    # Environment variable overrides config file
+    if [ -n "$CLAUDETAINER_SKIP_CONFIG" ]; then
+        skip_config="$CLAUDETAINER_SKIP_CONFIG"
+    fi
+
+    # Return true if enabled
+    if [ "$skip_config" = "1" ] || [ "$skip_config" = "true" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to show help
+show_help() {
+    echo -e "${GREEN}claudetainer${NC} - Run Claude in a Docker sandbox"
+    echo ""
+    echo -e "${YELLOW}Usage:${NC}"
+    echo "  claudetainer [OPTIONS] [prompt]     Run Claude with optional prompt"
+    echo "  claudetainer --help                 Show this help message"
+    echo "  claudetainer --set-prompt           Set default prompt interactively"
+    echo "  claudetainer --set-skip-config      Configure skip config dialog setting"
+    echo "  claudetainer --show-config          Show current configuration"
+    echo ""
+    echo -e "${YELLOW}Options:${NC}"
+    echo "  --skip-config                   Skip Claude configuration dialog (one-time)"
+    echo "  --no-config                     Alias for --skip-config"
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo "  claudetainer                                    # Run with default prompt (if set)"
+    echo "  claudetainer \"Review my code\"                   # Run with specific prompt"
+    echo "  claudetainer --skip-config                      # Skip config dialog (one-time)"
+    echo "  claudetainer --skip-config \"Review code\"        # Skip config + custom prompt"
+    echo "  claudetainer --set-prompt                       # Set default prompt (persistent)"
+    echo "  claudetainer --set-skip-config                  # Set skip config (persistent)"
+    echo ""
+    echo -e "${YELLOW}Configuration:${NC}"
+    echo "  Prompt config: $CONFIG_FILE"
+    echo "  Prompt variable: CLAUDETAINER_DEFAULT_PROMPT"
+    echo "  Skip config: CLAUDETAINER_SKIP_CONFIG=1 (environment variable)"
+    echo ""
+    echo -e "${YELLOW}Anthropic API Key (checked in order):${NC}"
+    echo "  - ANTHROPIC_API_KEY (recommended)"
+    echo "  - CLAUDE_API_KEY"
+    echo "  - ANTHROPIC_API"
+    echo "  - CLAUDE_API"
+    echo ""
+    echo -e "${YELLOW}GitHub Token (optional, for gh CLI):${NC}"
+    echo "  - GH_TOKEN (recommended)"
+    echo "  - GITHUB_TOKEN"
+    echo "  - GITHUB_PAT"
+    echo ""
+    echo -e "${YELLOW}Prompt Priority:${NC}"
+    echo "  Command line argument > Environment variable > Config file"
+    echo ""
+    exit 0
+}
+
+# Function to set default prompt interactively
+set_default_prompt() {
+    echo -e "${BLUE}Setting default prompt for claudetainer${NC}"
+    echo ""
+    echo "Enter your default prompt (or press Enter to clear):"
+    read -r prompt
+
+    # Create config directory if it doesn't exist
+    mkdir -p "$CONFIG_DIR"
+
+    # Load existing skip config setting if it exists
+    local existing_skip=""
+    if [ -f "$CONFIG_FILE" ]; then
+        existing_skip=$(source "$CONFIG_FILE" 2>/dev/null && echo "$SKIP_CONFIG_DIALOG")
+    fi
+
+    # Write config file
+    if [ -n "$prompt" ]; then
+        # Escape single quotes in the prompt
+        escaped_prompt=$(echo "$prompt" | sed "s/'/'\\\\''/g")
+        {
+            echo "DEFAULT_PROMPT='$escaped_prompt'"
+            if [ -n "$existing_skip" ]; then
+                echo "SKIP_CONFIG_DIALOG='$existing_skip'"
+            fi
+        } > "$CONFIG_FILE"
+        echo -e "${GREEN}✓ Default prompt saved to $CONFIG_FILE${NC}"
+        echo ""
+        echo "Your default prompt:"
+        echo "  $prompt"
+    else
+        # Keep skip config if it exists, otherwise clear the file
+        if [ -n "$existing_skip" ]; then
+            echo "SKIP_CONFIG_DIALOG='$existing_skip'" > "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Default prompt cleared (skip config setting preserved)${NC}"
+        else
+            > "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Default prompt cleared${NC}"
+        fi
+    fi
+    echo ""
+    exit 0
+}
+
+# Function to set skip config option persistently
+set_skip_config() {
+    echo -e "${BLUE}Configure skip configuration dialog setting${NC}"
+    echo ""
+    echo "Do you want to skip the Claude configuration dialog on startup?"
+    echo "  1) Yes - Always skip the configuration dialog"
+    echo "  2) No  - Show the configuration dialog"
+    echo ""
+    read -p "Enter choice (1 or 2): " choice
+
+    # Create config directory if it doesn't exist
+    mkdir -p "$CONFIG_DIR"
+
+    # Load existing prompt if it exists
+    local existing_prompt=""
+    if [ -f "$CONFIG_FILE" ]; then
+        existing_prompt=$(source "$CONFIG_FILE" 2>/dev/null && echo "$DEFAULT_PROMPT")
+    fi
+
+    # Escape single quotes in the prompt if it exists
+    local escaped_prompt=""
+    if [ -n "$existing_prompt" ]; then
+        escaped_prompt=$(echo "$existing_prompt" | sed "s/'/'\\\\''/g")
+    fi
+
+    # Write config file
+    case "$choice" in
+        1)
+            {
+                if [ -n "$existing_prompt" ]; then
+                    echo "DEFAULT_PROMPT='$escaped_prompt'"
+                fi
+                echo "SKIP_CONFIG_DIALOG='1'"
+            } > "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Configuration dialog will be skipped${NC}"
+            ;;
+        2)
+            {
+                if [ -n "$existing_prompt" ]; then
+                    echo "DEFAULT_PROMPT='$escaped_prompt'"
+                fi
+                echo "SKIP_CONFIG_DIALOG='0'"
+            } > "$CONFIG_FILE"
+            echo -e "${GREEN}✓ Configuration dialog will be shown${NC}"
+            ;;
+        *)
+            echo -e "${RED}Invalid choice. No changes made.${NC}"
+            exit 1
+            ;;
+    esac
+    echo ""
+    echo "Config saved to: $CONFIG_FILE"
+    echo ""
+    exit 0
+}
+
+# Function to show current configuration
+show_config() {
+    echo -e "${BLUE}Claudetainer Configuration${NC}"
+    echo ""
+
+    # Show API key status
+    echo -e "${YELLOW}Anthropic API Key:${NC}"
+    local api_key_found=false
+    local alternatives=("ANTHROPIC_API_KEY" "CLAUDE_API_KEY" "ANTHROPIC_API" "CLAUDE_API")
+
+    for var in "${alternatives[@]}"; do
+        local value="${!var}"
+        if [ -n "$value" ]; then
+            echo -e "  ${GREEN}✓${NC} $var is set"
+            api_key_found=true
+        else
+            echo -e "  ${RED}✗${NC} $var is not set"
+        fi
+    done
+
+    if [ "$api_key_found" = false ]; then
+        echo -e "  ${RED}Warning: No API key found!${NC}"
+    fi
+
+    echo ""
+    # Show GitHub token status
+    echo -e "${YELLOW}GitHub Token (for gh CLI):${NC}"
+    local github_token_found=false
+    local gh_alternatives=("GH_TOKEN" "GITHUB_TOKEN" "GITHUB_PAT")
+
+    for var in "${gh_alternatives[@]}"; do
+        local value="${!var}"
+        if [ -n "$value" ]; then
+            echo -e "  ${GREEN}✓${NC} $var is set"
+            github_token_found=true
+        else
+            echo -e "  ${RED}✗${NC} $var is not set"
+        fi
+    done
+
+    if [ "$github_token_found" = false ]; then
+        echo -e "  ${YELLOW}Note: GitHub token not found. gh CLI won't work in container.${NC}"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}Default Prompt:${NC}"
+    echo "  Config file: $CONFIG_FILE"
+
+    if [ -f "$CONFIG_FILE" ]; then
+        local config_prompt=$(source "$CONFIG_FILE" 2>/dev/null && echo "$DEFAULT_PROMPT")
+        if [ -n "$config_prompt" ]; then
+            echo "    Value: $config_prompt"
+        else
+            echo "    Value: (not set)"
+        fi
+    else
+        echo "    Status: Config file does not exist"
+    fi
+
+    if [ -n "$CLAUDETAINER_DEFAULT_PROMPT" ]; then
+        echo ""
+        echo "  Environment variable:"
+        echo "    CLAUDETAINER_DEFAULT_PROMPT=$CLAUDETAINER_DEFAULT_PROMPT"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}Options:${NC}"
+
+    # Check config file for skip config setting
+    local config_skip=""
+    if [ -f "$CONFIG_FILE" ]; then
+        config_skip=$(source "$CONFIG_FILE" 2>/dev/null && echo "$SKIP_CONFIG_DIALOG")
+    fi
+
+    if [ -n "$config_skip" ] && ([ "$config_skip" = "1" ] || [ "$config_skip" = "true" ]); then
+        echo -e "  Skip config dialog (config file): ${GREEN}✓ Enabled${NC}"
+    else
+        echo "  Skip config dialog (config file): Not set"
+    fi
+
+    # Check environment variable
+    if [ "${CLAUDETAINER_SKIP_CONFIG:-0}" = "1" ] || [ "${CLAUDETAINER_SKIP_CONFIG:-0}" = "true" ]; then
+        echo -e "  Skip config dialog (env var): ${GREEN}✓ Enabled${NC} (CLAUDETAINER_SKIP_CONFIG)"
+    else
+        echo "  Skip config dialog (env var): Not set"
+    fi
+
+    # Show effective setting
+    if load_skip_config; then
+        echo -e "  ${GREEN}→ Effective: Configuration dialog will be skipped${NC}"
+    else
+        echo "  → Effective: Configuration dialog will be shown"
+    fi
+
+    echo ""
+    exit 0
+}
+
+# Function to find API key from alternative variable names
+find_api_key() {
+    # Check in priority order
+    local alternatives=(
+        "ANTHROPIC_API_KEY"
+        "CLAUDE_API_KEY"
+        "ANTHROPIC_API"
+        "CLAUDE_API"
+    )
+
+    for var in "${alternatives[@]}"; do
+        local value="${!var}"
+        if [ -n "$value" ]; then
+            echo "$value"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Function to find GitHub token from alternative variable names
+find_github_token() {
+    # Check in priority order
+    local alternatives=(
+        "GH_TOKEN"
+        "GITHUB_TOKEN"
+        "GITHUB_PAT"
+    )
+
+    for var in "${alternatives[@]}"; do
+        local value="${!var}"
+        if [ -n "$value" ]; then
+            echo "$value"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Parse command line arguments
+SKIP_CONFIG_CLI=false
+PROMPT_ARG=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --help|-h)
+            show_help
+            ;;
+        --set-prompt)
+            set_default_prompt
+            ;;
+        --set-skip-config)
+            set_skip_config
+            ;;
+        --show-config)
+            show_config
+            ;;
+        --skip-config|--no-config)
+            SKIP_CONFIG_CLI=true
+            shift
+            ;;
+        *)
+            # This is the prompt argument
+            PROMPT_ARG="$1"
+            shift
+            ;;
+    esac
+done
+
+# Determine if skip config should be enabled
+# CLI flag takes highest priority
+if [ "$SKIP_CONFIG_CLI" = true ]; then
+    SKIP_CONFIG=true
+elif load_skip_config; then
+    SKIP_CONFIG=true
+else
+    SKIP_CONFIG=false
+fi
+
+# Check if any API key variable is set
+API_KEY=$(find_api_key)
+
+if [ -z "$API_KEY" ]; then
+    echo -e "${RED}Error: Anthropic API key not found.${NC}"
+    echo ""
+    echo "Claudetainer checks for API keys in the following environment variables:"
+    echo "  - ANTHROPIC_API_KEY (recommended)"
+    echo "  - CLAUDE_API_KEY"
+    echo "  - ANTHROPIC_API"
+    echo "  - CLAUDE_API"
+    echo ""
+
+    SHELL_CONFIG=$(detect_shell_config)
+
+    echo -e "${YELLOW}Please add one of the following to your shell configuration file:${NC}"
+    echo -e "${GREEN}export ANTHROPIC_API_KEY='your-api-key-here'${NC}"
+    echo ""
+    echo "Shell config file: $SHELL_CONFIG"
+    echo ""
+    echo "Steps:"
+    echo "  1. Get your API key from: https://console.anthropic.com/settings/keys"
+    echo "  2. Add the export line to $SHELL_CONFIG"
+    echo "  3. Run: source $SHELL_CONFIG"
+    echo "  4. Try running claudetainer again"
+    echo ""
+    exit 1
+fi
+
+# Export as ANTHROPIC_API_KEY for Docker (Claude expects this variable name)
+export ANTHROPIC_API_KEY="$API_KEY"
+
+# Check for GitHub token (optional)
+GITHUB_TOKEN=$(find_github_token) || true
+if [ -n "$GITHUB_TOKEN" ]; then
+    # Export both GH_TOKEN and GITHUB_TOKEN for maximum compatibility
+    export GH_TOKEN="$GITHUB_TOKEN"
+    export GITHUB_TOKEN="$GITHUB_TOKEN"
+fi
+
+# Check if docker is available
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Error: docker command not found.${NC}"
+    echo "Please install Docker Desktop or Docker CLI."
+    exit 1
+fi
+
+# Determine the prompt to use
+PROMPT=""
+if [ -n "$PROMPT_ARG" ]; then
+    # Command line argument takes precedence
+    PROMPT="$PROMPT_ARG"
+else
+    # Load default prompt from config or environment
+    PROMPT=$(load_default_prompt)
+fi
+
+# Build docker command arguments
+# Note: docker sandbox run inherits environment variables from the shell
+# We've already exported ANTHROPIC_API_KEY, GH_TOKEN, and GITHUB_TOKEN above
+DOCKER_ARGS=(sandbox run)
+
+# Show GitHub token status
+if [ -n "$GITHUB_TOKEN" ]; then
+    echo -e "${GREEN}✓ GitHub token detected - gh CLI will be available${NC}"
+fi
+
+# Add claude and workspace
+DOCKER_ARGS+=(claude .)
+
+# Separator for claude arguments
+DOCKER_ARGS+=(--)
+
+# Add Claude CLI flags
+# Note: Use --allowedTools instead of --dangerously-skip-permissions
+# because the latter is blocked when running as root (which Docker containers often do)
+DOCKER_ARGS+=(--allowedTools '*')
+
+# Note: --skip-config is not a valid Claude CLI flag
+# The configuration dialog is automatically skipped in docker sandbox mode
+if [ "$SKIP_CONFIG" = true ]; then
+    echo -e "${YELLOW}ℹ Configuration dialog skip requested (handled by docker sandbox)${NC}"
+fi
+
+# Add prompt if one is set
+if [ -n "$PROMPT" ]; then
+    DOCKER_ARGS+=("$PROMPT")
+    echo -e "${GREEN}Starting Claude in Docker sandbox with prompt:${NC}"
+    echo -e "${BLUE}\"$PROMPT\"${NC}"
+    echo ""
+else
+    echo -e "${GREEN}Starting Claude in Docker sandbox...${NC}"
+fi
+
+# Execute docker command
+exec docker "${DOCKER_ARGS[@]}"
