@@ -16,6 +16,16 @@ A simple wrapper for running Claude CLI in a Docker sandbox with automatic API k
 
 ## Quick Start
 
+**Automated Installation (Recommended):**
+
+```bash
+git clone https://github.com/marcel-rbro/claudetainer.git
+cd claudetainer
+./install.sh --api-key "sk-ant-api03-your-key-here"
+```
+
+**Manual Installation:**
+
 ```bash
 # 1. Set your API key
 export ANTHROPIC_API_KEY='your-api-key-here'
@@ -99,6 +109,33 @@ source ~/.bashrc
 **Note:** If you already have a GitHub token in `GITHUB_TOKEN` or `GITHUB_PAT`, claudetainer will automatically detect and use it.
 
 ### 4. Install claudetainer globally
+
+**Automated Installation (Easiest):**
+
+Use the included install script:
+
+```bash
+# Basic installation
+./install.sh --api-key "sk-ant-api03-your-key-here"
+
+# With all options
+./install.sh \
+  --api-key "sk-ant-api03-..." \
+  --github-token "ghp_..." \
+  --default-prompt "Read the .claude instructions."
+
+# Update existing installation
+./install.sh --update
+```
+
+The install script will:
+- Install claudetainer to your PATH
+- Configure your shell environment automatically
+- Create config file with your settings
+- Test the installation
+- Create a backup of your shell config
+
+**Manual Installation:**
 
 **For Most Users (Recommended):**
 

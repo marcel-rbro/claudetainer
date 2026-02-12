@@ -10,13 +10,42 @@ Get up and running with claudetainer in 5 minutes.
 
 ## Installation
 
-### 1. Get API Keys
+### Option 1: Automated Installation (Recommended)
+
+**Easiest method** - One command does everything:
+
+```bash
+# Clone the repo
+git clone https://github.com/marcel-rbro/claudetainer.git
+cd claudetainer
+
+# Run installer with your API key
+./install.sh --api-key "sk-ant-api03-your-key-here"
+
+# With all options
+./install.sh \
+  --api-key "sk-ant-api03-..." \
+  --github-token "ghp_..." \
+  --default-prompt "Read the .claude instructions."
+```
+
+The installer will:
+- Install claudetainer to /usr/local/bin
+- Configure your shell environment
+- Set up default prompt (if provided)
+- Test the installation
+
+### Option 2: Manual Installation
+
+If you prefer manual setup:
+
+#### 1. Get API Keys
 
 **Required**: Get your Anthropic API key from <https://console.anthropic.com/settings/keys>
 
 **Optional**: Get a GitHub token for gh CLI support from <https://github.com/settings/tokens>
 
-### 2. Configure Your Shell
+#### 2. Configure Your Shell
 
 Add to `~/.zshrc` (or `~/.bashrc` for Bash):
 
@@ -37,7 +66,7 @@ Apply changes:
 source ~/.zshrc
 ```
 
-### 3. Install Claudetainer
+#### 3. Install Claudetainer
 
 ```bash
 # Download or clone the claudetainer repo
@@ -100,7 +129,15 @@ claudetainer --set-prompt
 
 ## Updating
 
-To update to the latest version:
+### Option 1: Using Install Script (Recommended)
+
+```bash
+cd /path/to/claudetainer
+git pull
+./install.sh --update
+```
+
+### Option 2: Manual Update
 
 ```bash
 cd /path/to/claudetainer
