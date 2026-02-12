@@ -27,60 +27,56 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Show usage
 show_usage() {
-    cat << EOF
-${GREEN}Claudetainer Installation Script${NC}
-
-${YELLOW}Usage:${NC}
-  ./install.sh --api-key <key> [OPTIONS]
-  ./install.sh --update [OPTIONS]
-
-${YELLOW}Required (for new installation):${NC}
-  --api-key <key>              Anthropic API key (required)
-
-${YELLOW}Update Mode:${NC}
-  --update                     Update existing installation (no config changes)
-                               Re-copies the script to installation location
-
-${YELLOW}Optional:${NC}
-  --github-token <token>       GitHub Personal Access Token
-  --default-prompt <prompt>    Default prompt for claudetainer
-  --method <copy|symlink>      Installation method (default: copy)
-  --path <path>                Installation path (default: /usr/local/bin)
-  --shell-config <file>        Shell config file (auto-detected if not specified)
-  --skip-shell-config          Don't modify shell config file
-  --help                       Show this help message
-
-${YELLOW}Examples:${NC}
-  # Basic installation
-  ./install.sh --api-key "sk-ant-api03-..."
-
-  # Full installation with all options
-  ./install.sh \\
-    --api-key "sk-ant-api03-..." \\
-    --github-token "ghp_..." \\
-    --default-prompt "Read the .claude instructions." \\
-    --method symlink
-
-  # Install without modifying shell config
-  ./install.sh --api-key "sk-ant-api03-..." --skip-shell-config
-
-  # Update existing installation (after git pull)
-  ./install.sh --update
-
-  # Update with specific installation path
-  ./install.sh --update --path /usr/local/bin
-
-${YELLOW}Installation Methods:${NC}
-  copy      Copy script to installation path (recommended for users)
-  symlink   Create symlink (recommended for contributors/developers)
-
-${YELLOW}Notes:${NC}
-  - API key is required for claudetainer to work
-  - GitHub token is optional but enables gh CLI support
-  - Default prompt is optional and can be set later
-  - Shell config is auto-detected (~/.zshrc or ~/.bashrc)
-
-EOF
+    echo -e "${YELLOW}Usage:${NC}"
+    echo "  ./install.sh --api-key <key> [OPTIONS]"
+    echo "  ./install.sh --update [OPTIONS]"
+    echo ""
+    echo -e "${YELLOW}Required (for new installation):${NC}"
+    echo "  --api-key <key>              Anthropic API key (required)"
+    echo ""
+    echo -e "${YELLOW}Update Mode:${NC}"
+    echo "  --update                     Update existing installation (no config changes)"
+    echo "                               Re-copies the script to installation location"
+    echo ""
+    echo -e "${YELLOW}Optional:${NC}"
+    echo "  --github-token <token>       GitHub Personal Access Token"
+    echo "  --default-prompt <prompt>    Default prompt for claudetainer"
+    echo "  --method <copy|symlink>      Installation method (default: copy)"
+    echo "  --path <path>                Installation path (default: /usr/local/bin)"
+    echo "  --shell-config <file>        Shell config file (auto-detected if not specified)"
+    echo "  --skip-shell-config          Don't modify shell config file"
+    echo "  --help                       Show this help message"
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo "  # Basic installation"
+    echo "  ./install.sh --api-key \"sk-ant-api03-...\""
+    echo ""
+    echo "  # Full installation with all options"
+    echo "  ./install.sh \\"
+    echo "    --api-key \"sk-ant-api03-...\" \\"
+    echo "    --github-token \"ghp_...\" \\"
+    echo "    --default-prompt \"Read the .claude instructions.\" \\"
+    echo "    --method symlink"
+    echo ""
+    echo "  # Install without modifying shell config"
+    echo "  ./install.sh --api-key \"sk-ant-api03-...\" --skip-shell-config"
+    echo ""
+    echo "  # Update existing installation (after git pull)"
+    echo "  ./install.sh --update"
+    echo ""
+    echo "  # Update with specific installation path"
+    echo "  ./install.sh --update --path /usr/local/bin"
+    echo ""
+    echo -e "${YELLOW}Installation Methods:${NC}"
+    echo "  copy      Copy script to installation path (recommended for users)"
+    echo "  symlink   Create symlink (recommended for contributors/developers)"
+    echo ""
+    echo -e "${YELLOW}Notes:${NC}"
+    echo "  - API key is required for claudetainer to work"
+    echo "  - GitHub token is optional but enables gh CLI support"
+    echo "  - Default prompt is optional and can be set later"
+    echo "  - Shell config is auto-detected (~/.zshrc or ~/.bashrc)"
+    echo ""
     exit 0
 }
 
