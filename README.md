@@ -2,6 +2,21 @@
 
 A simple wrapper for running Claude CLI in a Docker sandbox with automatic API key validation and default prompt support.
 
+## Security Model
+
+Docker sandbox runs each session in a **lightweight microVM** — not a standard container. This provides hardware-level isolation with a dedicated kernel per sandbox:
+
+| Layer | Protection |
+|-------|-----------|
+| **Process** | Separate kernel space — agent cannot see or signal host processes |
+| **Filesystem** | Only the current workspace is synced in; no access to `~/.ssh`, browser cookies, or other host files |
+| **Network** | Outbound traffic goes through an HTTP/HTTPS filtering proxy (`host.docker.internal:3128`); no access to host localhost or other sandboxes |
+| **Docker** | Private Docker daemon — no access to host images, containers, or volumes |
+
+When a sandbox is removed, everything inside is destroyed: installed packages, built images, and any state not synced back to the workspace.
+
+> Traditional container hardening (`--cap-drop`, `USER`, `--security-opt`) is unnecessary here — isolation happens at the hypervisor level via macOS `virtualization.framework` or Windows Hyper-V.
+
 ## What it does
 
 `claudetainer` is a convenience script that:
@@ -118,12 +133,17 @@ The Docker sandbox automatically inherits environment variables and mounts your 
 
 ## Security
 
-- Claude runs in a Docker sandbox with access to **current directory only**
-- Only use in directories you trust
+Claude runs in a microVM sandbox with access to **current directory only** (see [Security Model](#security-model) above).
+
+**Best practices:**
+
+- Only run in directories you trust — the workspace is fully accessible to the agent
 - Never commit API keys or tokens to version control
 - Store credentials in shell config files (`~/.zshrc`, `~/.bashrc`)
+- For GitHub tokens, use minimal necessary scopes (`repo`, `read:org`)
+- Per-sandbox resource limits (memory/CPU) are not supported; set global limits in [Docker Desktop Settings](https://docs.docker.com/desktop/settings-and-maintenance/settings/)
 
-For GitHub tokens, use minimal necessary scopes (`repo`, `read:org`).
+For details on the isolation architecture, see the [Docker Sandboxes documentation](https://docs.docker.com/ai/sandboxes/architecture/).
 
 ## Documentation
 
