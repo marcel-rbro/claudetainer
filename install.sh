@@ -21,6 +21,8 @@ GITHUB_TOKEN=""
 DEFAULT_PROMPT=""
 SKIP_SHELL_CONFIG=false
 UPDATE_MODE=false
+UNINSTALL_MODE=false
+REMOVE_CONFIG=false
 
 # Script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -30,6 +32,7 @@ show_usage() {
     echo -e "${YELLOW}Usage:${NC}"
     echo "  ./install.sh --api-key <key> [OPTIONS]"
     echo "  ./install.sh --update [OPTIONS]"
+    echo "  ./install.sh --uninstall [OPTIONS]"
     echo ""
     echo -e "${YELLOW}Required (for new installation):${NC}"
     echo "  --api-key <key>              Anthropic API key (required)"
@@ -37,6 +40,10 @@ show_usage() {
     echo -e "${YELLOW}Update Mode:${NC}"
     echo "  --update                     Update existing installation (no config changes)"
     echo "                               Re-copies the script to installation location"
+    echo ""
+    echo -e "${YELLOW}Uninstall Mode:${NC}"
+    echo "  --uninstall                  Remove claudetainer from system"
+    echo "  --remove-config              Also remove shell config and ~/.claudetainer"
     echo ""
     echo -e "${YELLOW}Optional:${NC}"
     echo "  --github-token <token>       GitHub Personal Access Token"
@@ -66,6 +73,12 @@ show_usage() {
     echo ""
     echo "  # Update with specific installation path"
     echo "  ./install.sh --update --path /usr/local/bin"
+    echo ""
+    echo "  # Uninstall claudetainer"
+    echo "  ./install.sh --uninstall"
+    echo ""
+    echo "  # Uninstall and remove all configuration"
+    echo "  ./install.sh --uninstall --remove-config"
     echo ""
     echo -e "${YELLOW}Installation Methods:${NC}"
     echo "  copy      Copy script to installation path (recommended for users)"
@@ -103,6 +116,14 @@ parse_args() {
             --update)
                 UPDATE_MODE=true
                 SKIP_SHELL_CONFIG=true
+                shift
+                ;;
+            --uninstall)
+                UNINSTALL_MODE=true
+                shift
+                ;;
+            --remove-config)
+                REMOVE_CONFIG=true
                 shift
                 ;;
             --api-key)
@@ -147,6 +168,11 @@ parse_args() {
 
 # Validate inputs
 validate_inputs() {
+    # Skip validation in uninstall mode
+    if [ "$UNINSTALL_MODE" = true ]; then
+        return
+    fi
+
     # Check API key (not required in update mode)
     if [ "$UPDATE_MODE" = false ] && [ -z "$API_KEY" ]; then
         echo -e "${RED}Error: API key is required${NC}"
@@ -154,6 +180,7 @@ validate_inputs() {
         echo "Get your API key from: https://console.anthropic.com/settings/keys"
         echo ""
         echo "Or use --update to update existing installation"
+        echo "Or use --uninstall to remove claudetainer"
         exit 1
     fi
 
@@ -322,6 +349,74 @@ test_installation() {
     fi
 }
 
+# Uninstall claudetainer
+uninstall_claudetainer() {
+    echo -e "${BLUE}Uninstalling claudetainer...${NC}"
+    echo ""
+
+    local uninstalled_something=false
+
+    # Remove claudetainer from installation path
+    local claudetainer_bin="$INSTALL_PATH/claudetainer"
+    if [ -e "$claudetainer_bin" ]; then
+        echo "Removing $claudetainer_bin"
+        if [ -w "$INSTALL_PATH" ]; then
+            rm "$claudetainer_bin"
+        else
+            sudo rm "$claudetainer_bin"
+        fi
+        echo -e "${GREEN}✓ Removed claudetainer binary${NC}"
+        uninstalled_something=true
+    else
+        echo -e "${YELLOW}⚠ Claudetainer binary not found at $claudetainer_bin${NC}"
+    fi
+
+    # Remove config if requested
+    if [ "$REMOVE_CONFIG" = true ]; then
+        local shell_config=$(detect_shell_config)
+
+        # Remove shell configuration
+        if [ -f "$shell_config" ] && grep -q "# Claudetainer configuration" "$shell_config" 2>/dev/null; then
+            echo "Removing configuration from $shell_config"
+            # Create backup
+            cp "$shell_config" "$shell_config.backup.uninstall.$(date +%Y%m%d_%H%M%S)"
+            # Remove configuration
+            sed -i.bak '/# Claudetainer configuration/,/# End Claudetainer configuration/d' "$shell_config"
+            echo -e "${GREEN}✓ Removed shell configuration${NC}"
+            echo -e "${BLUE}  Backup created: $shell_config.backup.uninstall.$(date +%Y%m%d_%H%M%S)${NC}"
+            uninstalled_something=true
+        fi
+
+        # Remove ~/.claudetainer directory
+        if [ -d "$HOME/.claudetainer" ]; then
+            echo "Removing $HOME/.claudetainer"
+            rm -rf "$HOME/.claudetainer"
+            echo -e "${GREEN}✓ Removed ~/.claudetainer directory${NC}"
+            uninstalled_something=true
+        fi
+    else
+        echo ""
+        echo -e "${YELLOW}Note: Shell configuration and ~/.claudetainer preserved${NC}"
+        echo "To remove these, run: ./install.sh --uninstall --remove-config"
+    fi
+
+    echo ""
+    if [ "$uninstalled_something" = true ]; then
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}✓ Uninstallation completed${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+
+        if [ "$REMOVE_CONFIG" = true ]; then
+            echo ""
+            echo -e "${YELLOW}Note: You may need to restart your shell or run:${NC}"
+            echo "  source $(detect_shell_config)"
+        fi
+    else
+        echo -e "${YELLOW}Nothing to uninstall${NC}"
+    fi
+    echo ""
+}
+
 # Show completion message
 show_completion() {
     echo ""
@@ -375,6 +470,14 @@ main() {
     echo ""
 
     parse_args "$@"
+
+    # Handle uninstall mode
+    if [ "$UNINSTALL_MODE" = true ]; then
+        uninstall_claudetainer
+        exit 0
+    fi
+
+    # Normal installation/update flow
     validate_inputs
     install_claudetainer
     configure_shell
