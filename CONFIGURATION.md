@@ -217,6 +217,26 @@ Output shows:
 - **Shell config**: `~/.zshrc` or `~/.bashrc`
 - **Backups**: Created with timestamp when modified by install script
 
+## Sandbox-Aware Project Instructions
+
+The Docker sandbox's HTTPS proxy breaks git's binary pack protocol (`git clone`/`fetch`/`pull` will fail). If your project's `CLAUDE.md` instructs Claude to clone repositories, add the workaround so Claude knows to use `curl` instead.
+
+Add the following to your project's `CLAUDE.md`:
+
+```markdown
+## Sandbox Limitations
+
+- `git clone`, `git fetch`, and `git pull` do not work inside the Docker sandbox
+  (the HTTPS proxy corrupts git's binary pack protocol).
+- To download a repository, use:
+  ```bash
+  curl -L https://github.com/<org>/<repo>/archive/refs/heads/<branch>.tar.gz | tar xz
+  ```
+- If `GH_TOKEN` is available, `gh repo clone <org>/<repo>` may also work.
+```
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#git-clone--git-fetch-fails-inside-the-sandbox) for full details on the error patterns.
+
 ## Best Practices
 
 1. **Use environment variables** for API keys (don't commit to git)

@@ -231,6 +231,33 @@ git pull
 
 Current version uses `--allowedTools '*'` instead, which works with root.
 
+### git clone / git fetch fails inside the sandbox
+
+**Cause**: The Docker sandbox routes HTTPS traffic through a filtering proxy at `host.docker.internal:3128`. This proxy corrupts git's binary pack protocol, breaking `git clone`, `git fetch`, and `git pull`.
+
+**Symptoms** (observed across 7 attempts, 4 distinct error patterns):
+
+1. `inflate: data stream error (unknown compression method)` + `fatal: serious inflate inconsistency` — most common; returned by default, depth-limited, and HTTP/1.1 clones
+2. `unknown object type 0 at offset ...` / `fatal: bad tree object` — partial data gets through but is corrupted (seen after adding the proxy CA cert)
+3. `fatal: 'origin' does not appear to be a git repository` — proxy blocks smart-HTTP negotiation entirely (seen with `GIT_HTTP_NO_COMPRESS=1` and `--filter=blob:none`)
+4. `fatal: bad config line 6` — proxy writes garbage into `.git/config`
+
+**Workaround** — download a tar.gz archive instead of cloning:
+
+```bash
+curl -L https://github.com/<org>/<repo>/archive/refs/heads/<branch>.tar.gz | tar xz
+```
+
+This bypasses git's pack protocol entirely and works reliably through the proxy.
+
+**Alternative** — the `gh` CLI may work if `GH_TOKEN` is configured in the sandbox environment:
+
+```bash
+gh repo clone <org>/<repo>
+```
+
+**Note**: This is a Docker Desktop sandbox limitation, not a claudetainer bug. The proxy is part of the sandbox's network isolation layer and cannot be bypassed or reconfigured.
+
 ## Getting Help
 
 If you still have issues after trying these solutions:

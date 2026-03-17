@@ -10,7 +10,7 @@ Docker sandbox runs each session in a **lightweight microVM** — not a standard
 |-------|-----------|
 | **Process** | Separate kernel space — agent cannot see or signal host processes |
 | **Filesystem** | Only the current workspace is synced in; no access to `~/.ssh`, browser cookies, or other host files |
-| **Network** | Outbound traffic goes through an HTTP/HTTPS filtering proxy (`host.docker.internal:3128`); no access to host localhost or other sandboxes |
+| **Network** | Outbound traffic goes through an HTTP/HTTPS filtering proxy (`host.docker.internal:3128`); no access to host localhost or other sandboxes. **Note:** the proxy [breaks git's binary protocol](TROUBLESHOOTING.md#git-clone--git-fetch-fails-inside-the-sandbox) — use `curl` tar.gz downloads instead |
 | **Docker** | Private Docker daemon — no access to host images, containers, or volumes |
 
 When a sandbox is removed, everything inside is destroyed: installed packages, built images, and any state not synced back to the workspace.
@@ -159,6 +159,7 @@ For details on the isolation architecture, see the [Docker Sandboxes documentati
 claudetainer/
 ├── claudetainer           # Main executable script
 ├── install.sh             # Installation automation
+├── CLAUDE.md              # Project instructions for Claude in sandbox
 ├── README.md              # Project overview (this file)
 ├── QUICKSTART.md          # Quick 5-minute setup
 ├── INSTALL.md             # Detailed installation
